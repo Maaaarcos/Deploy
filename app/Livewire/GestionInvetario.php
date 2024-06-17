@@ -1,14 +1,15 @@
 <?php
 
 namespace App\Livewire;
-
 use App\Models\Producto;
 use App\Models\Categoria;
 use App\Models\Iva;
 use App\Models\Caja;
 use App\Models\User;
+use App\Models\Tercero;
+use App\Models\DatosEmpresa;
 use Livewire\WithFileUploads;
-use Livewire\Component;
+use Livewire\Component;;
 
 class GestionInvetario extends Component
 {
@@ -20,6 +21,8 @@ class GestionInvetario extends Component
     public $iva = [];
     public $caja = [];
     public $user = [];
+    public $empresa = [];
+    public $tercero=[];
 
     // Propiedades de Producto
     public $nombre;
@@ -41,6 +44,47 @@ class GestionInvetario extends Component
     public $privilegios;
     public $puesto_empresa;
     public $imagen_empleado;
+
+    // Propiedades de Caja
+    public $cajaName;
+
+    // Propiedades de Iva
+    public $qty;
+    // Propiedades de Empresa
+    public $nombreEmpresa;
+    public $direccion;
+    public $provincia;
+    public $terceroid;
+    public $telefono;
+    public $emailEmpresa;
+    public $ruc;
+    public $tipoEmpresa;
+    public $actividadEconomica;
+    public $ciudad;
+    public $codigoPostal;
+    public $nif;
+
+    // Reglas de validación
+    protected $rulesEmpresa =[
+        'nombreEmpresa' => 'required|string|max:255',
+        'direccion' => 'required|string|max:255',
+        'provincia' => 'required|string|max:255',
+        'telefono' => 'required|string|max:255',
+        'terceroid' => 'required|integer',
+        'emailEmpresa' => 'required|email',
+        'ruc' => 'required|string|max:255',
+        'tipoEmpresa' => 'required|string|max:255',
+        'actividadEconomica' => 'required|string|max:255',
+        'ciudad' => 'required|string|max:255',
+        'codigoPostal' => 'required|string|max:255',
+        'nif' => 'required|string|max:255',
+
+    ];
+
+
+    protected $rulesCaja =[
+        'cajaName' => 'required|string|max:255',
+    ];
 
     protected $rules = [
         'nombre' => 'required|string',
@@ -73,7 +117,66 @@ class GestionInvetario extends Component
         $this->iva = Iva::select('id', 'qty')->get()->keyBy('id')->toArray();
         $this->caja = Caja::select('id', 'name')->get()->keyBy('id')->toArray();
         $this->user = User::select('id', 'name', 'email', 'puesto_empresa', 'privilegios', 'password', 'imagen_url')->get()->keyBy('id')->toArray();
+        $this->empresa = DatosEmpresa::select('id', 'nombre', 'direccion', 'provincia', 'tercero_id', 'telefono', 'email', 'ruc', 'tipo_empresa', 'actividad_economica', 'ciudad', 'codigo_postal', 'nif')->get()->keyBy('id')->toArray();
+        $this->tercero = Tercero::select('id', 'nombre')->get()->keyBy('id')->toArray();
     }
+
+    public function clearSessionMessage()
+    {
+        session()->forget(['messages.error', 'messages.success']);
+    }
+
+    public function crearEmpresa()
+        {
+            try {
+                $this->validate($this->rulesEmpresa);
+                $terceroid = (int)$this->terceroid;
+                dd($this->nombreEmpresa,$this->direccion,$this->provincia,$this->terceroid,$this->telefono,$this->emailEmpresa,$this->ruc,$this->tipoEmpresa,$this->actividadEconomica,$this->ciudad,$this->codigoPostal,$this->nif);
+                // Crear la empresa
+                DatosEmpresa::create([
+                    'nombre' => $this->nombreEmpresa,
+                    'direccion' => $this->direccion,
+                    'provincia' => $this->provincia,
+                    'tercero_id' => 1,
+                    'telefono' => $this->telefono,
+                    'email' => $this->emailEmpresa,
+                    'ruc' => $this->ruc,
+                    'tipo_empresa' => $this->tipoEmpresa,
+                    'actividad_economica' => $this->actividadEconomica,
+                    'ciudad' => $this->ciudad,
+                    'codigo_postal' => $this->codigoPostal,
+                    'nif' => $this->nif,
+                ]);
+                // dd($this->nombreEmpresa,$this->direccion,$this->provincia,$this->terceroid,$this->telefono,$this->emailEmpresa,$this->ruc,$this->tipoEmpresa,$this->actividadEconomica,$this->ciudad,$this->codigoPostal,$this->nif);
+                // Limpiar los campos del formulario después de crear la empresa
+                $this->nombreEmpresa = '';
+                $this->direccion = '';
+                $this->provincia = '';
+                $this->terceroid = '';
+                $this->telefono = '';
+                $this->emailEmpresa = '';
+                $this->ruc = '';
+                $this->tipoEmpresa = '';
+                $this->actividadEconomica = '';
+                $this->ciudad = '';
+                $this->codigoPostal = '';
+                $this->nif = '';
+
+                // Actualizar la lista de empresas
+                $this->empresa = DatosEmpresa::select('id', 'nombre', 'direccion', 'provincia', 'tercero_id', 'telefono', 'email', 'ruc', 'tipo_empresa', 'actividad_economica', 'ciudad', 'codigo_postal', 'nif')->get()->keyBy('id')->toArray();
+                
+                session()->flash('message', 'Empresa creada correctamente');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                // Manejar errores de validación
+                $errors = $e->validator->errors()->getMessages();
+                foreach ($errors as $field => $message) {
+                    session()->flash('error_' . $field, $this->getCustomErrorMessage($field, $message));
+                }
+            } catch (\Exception $e) {
+                // Manejar cualquier otra excepción inesperada
+                session()->flash('error', 'Ocurrió un error al crear la empresa. Por favor, inténtelo de nuevo más tarde.');
+            }
+        }
 
     public function crearProducto()
 {
@@ -93,6 +196,15 @@ class GestionInvetario extends Component
             'stock' => $this->stock,
             'estado' => $this->estado,
         ]);
+
+        // Limpiar los campos del formulario después de crear el producto
+        $this->nombre = '';
+        $this->precio = '';
+        $this->imagen = null;
+        $this->iva_id = '';
+        $this->categoria_id = '';
+        $this->stock = '';
+        $this->estado = '';
 
         // Actualizar la lista de productos
         $this->productos = Producto::select('id', 'nombre', 'precio', 'imagen_url', 'iva_id', 'categoria_id', 'stock', 'se_vende')
@@ -152,20 +264,20 @@ class GestionInvetario extends Component
     }
 }
 
-    public function crearEmpleado() 
+public function crearEmpleado()
 {
     try {
-        // Validate the request data
+        // Validar los datos del formulario
         $this->validate($this->rulesEmpleado);
 
-        // Ensure the image is correctly uploaded
+        // Asegurar que la imagen se ha subido correctamente
         if ($this->imagen_empleado && $this->imagen_empleado instanceof \Illuminate\Http\UploadedFile) {
             $imagenPath = $this->imagen_empleado->store('empleados', 'public');
         } else {
-            throw new \Exception('Error uploading image.');
+            throw new \Exception('Error al subir la imagen.');
         }
 
-        // Create a new user
+        // Crear un nuevo usuario
         User::create([
             'name' => $this->name,
             'email' => $this->email,
@@ -175,28 +287,38 @@ class GestionInvetario extends Component
             'puesto_empresa' => $this->puesto_empresa,
         ]);
 
-        // Refresh the user list
+        $this->reset([
+            'name',
+            'email',
+            'password',
+            'privilegios',
+            'imagen_empleado',
+            'puesto_empresa',
+        ]);
+
+        // Actualizar la lista de usuarios
         $this->user = User::select('id', 'name', 'email', 'password', 'privilegios', 'imagen_url', 'puesto_empresa')
             ->get()
             ->keyBy('id')
             ->toArray();
 
-        // Flash a success message to the session
+        // Mensaje de éxito
         session()->flash('message', 'Empleado creado correctamente');
     } catch (\Illuminate\Validation\ValidationException $e) {
-        // Handle validation errors
+        // Manejar errores de validación
         $errors = $e->validator->errors()->getMessages();
         foreach ($errors as $field => $message) {
-            session()->flash('error_' . $field, $this->getCustomErrorMessage($field, $message));
+            session()->flash('error_' . $fields, implode(', ', $message));
         }
     } catch (\Illuminate\Database\QueryException $e) {
-        // Handle database errors
+        // Manejar errores de la base de datos
         session()->flash('error', 'Hubo un problema con la base de datos. Por favor, inténtelo de nuevo más tarde.');
     } catch (\Exception $e) {
-        // Handle all other errors
+        // Manejar todos los demás errores
         session()->flash('error', 'Ocurrió un error inesperado. Por favor, inténtelo de nuevo más tarde.');
     }
 }
+
 
 /**
  * Get custom error message based on field and message
@@ -215,58 +337,14 @@ private function getCustomErrorMessage($field, $message)
     return $customMessages[$field] ?? implode(', ', $message);
 }
 
-
-public function actualizarEmpleado($id, $name, $email, $password, $privilegios, $imagen_empleado, $puesto_empresa)
-{
-    try {
-        $user = User::find($id);
-        if ($user) {
-            $user->name = $name;
-            $user->email = $email;
-            // Actualizar la contraseña solo si se proporciona una nueva
-            if (!empty($password)) {
-                $user->password = bcrypt($password);
-            }
-            $user->privilegios = $privilegios;
-            $user->puesto_empresa = $puesto_empresa;
-
-            // Validar y almacenar la nueva imagen del empleado si se proporciona
-            if ($imagen_empleado) {
-                $this->validate(['imagen_empleado' => 'image|max:2048']);
-                $imagenPath = $imagen_empleado->store('empleados', 'public');
-                $user->imagen_url = $imagenPath;
-            }
-
-            $user->save();
-            session()->flash('message', 'Empleado actualizado correctamente');
-        } else {
-            session()->flash('error', 'Empleado no encontrado.');
-        }
-
-        $this->user = User::select('id', 'name', 'email', 'password', 'privilegios', 'imagen_url', 'puesto_empresa')
-            ->get()
-            ->keyBy('id')
-            ->toArray();
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        // Manejar errores de validación
-        $errors = $e->validator->errors()->getMessages();
-        foreach ($errors as $field => $message) {
-            session()->flash('error_' . $field, $this->getCustomErrorMessage($field, $message));
-        }
-    } catch (\Illuminate\Database\QueryException $e) {
-        // Manejar errores de base de datos
-        session()->flash('error', 'Hubo un problema al actualizar el empleado. Por favor, inténtelo de nuevo más tarde.');
-    } catch (\Exception $e) {
-        // Manejar cualquier otra excepción inesperada
-        session()->flash('error', 'Ocurrió un error inesperado. Por favor, inténtelo de nuevo más tarde.');
-    }
-}
-
-    public function crearIva($qty)
+    public function crearIva()
     {
         try {
-            Iva::create(['qty' => $qty]);
+    
+            $this->validate(['qty' => 'required|numeric']);
+            Iva::create(['qty' => $this->qty]);
             $this->iva = Iva::select('id', 'qty')->get()->keyBy('id')->toArray();
+            $this->reset('qty');
             session()->flash('message', 'IVA creado correctamente');
         } catch (\Illuminate\Database\QueryException $e) {
             session()->flash('error', 'Hubo un problema al crear el IVA. Por favor, inténtelo de nuevo más tarde.');
@@ -275,20 +353,97 @@ public function actualizarEmpleado($id, $name, $email, $password, $privilegios, 
         }
     }
     
-    public function crearCaja($name)
+    public function crearCaja()
+{
+    $this->validate($this->rulesCaja);
+
+    try {
+        Caja::create(['name' => $this->cajaName]);
+        $this->reset('cajaName');
+        $this->caja = Caja::select('id', 'name')->get()->keyBy('id')->toArray();
+        session()->flash('message', 'Caja creada correctamente');
+    } catch (\Illuminate\Database\QueryException $e) {
+        session()->flash('error', 'Hubo un problema al crear la caja. Por favor, inténtelo de nuevo más tarde.');
+    } catch (\Exception $e) {
+        session()->flash('error', 'Ocurrió un error inesperado. Por favor, inténtelo de nuevo más tarde.');
+    }
+}
+    
+    public function actualizarEmpresa($id, $nombre, $direccion, $telefono, $email, $ruc, $tipo_empresa, $actividad_economica, $ciudad, $codigo_postal, $nif)
     {
         try {
-            Caja::create(['name' => $name]);
-            $this->caja = Caja::select('id', 'name')->get()->keyBy('id')->toArray();
-            session()->flash('message', 'Caja creada correctamente');
+            $empresa = DatosEmpresa::find($id);
+            if ($empresa) {
+                $empresa->nombre = $nombre;
+                $empresa->direccion = $direccion;
+                $empresa->telefono = $telefono;
+                $empresa->email = $email;
+                $empresa->ruc = $ruc;
+                $empresa->tipo_empresa = $tipo_empresa;
+                $empresa->actividad_economica = $actividad_economica;
+                $empresa->ciudad = $ciudad;
+                $empresa->codigo_postal = $codigo_postal;
+                $empresa->nif = $nif;
+                $empresa->save();
+                session()->flash('message', 'Empresa actualizada correctamente');
+            } else {
+                session()->flash('error', 'Empresa no encontrada.');
+            }
+
+            $this->empresa = Empresa::select('id', 'nombre', 'direccion', 'telefono', 'email', 'ruc', 'tipo_empresa', 'actividad_economica', 'ciudad', 'codigo_postal', 'nif')->get()->keyBy('id')->toArray();
         } catch (\Illuminate\Database\QueryException $e) {
-            session()->flash('error', 'Hubo un problema al crear la caja. Por favor, inténtelo de nuevo más tarde.');
+            session()->flash('error', 'Hubo un problema al actualizar la empresa. Por favor, inténtelo de nuevo más tarde.');
         } catch (\Exception $e) {
             session()->flash('error', 'Ocurrió un error inesperado. Por favor, inténtelo de nuevo más tarde.');
         }
     }
+
+    public function actualizarEmpleado($id, $name, $email, $password, $privilegios, $imagen_url = null,$puesto_empresa)
+    {
+        try {
+            $user = User::find($id);
+            if ($user) {
+                $user->name = $name;
+                $user->email = $email;
+                $user->password = bcrypt($password);
+                $user->privilegios = $privilegios;
+                $user->puesto_empresa = $puesto_empresa;
+                
+                if (!empty($password)) {
+                    // Verificar longitud de la contraseña
+                    if (strlen($password) < 8) {
+                        throw new \Exception('La contraseña es demasiado corta. Debe tener al menos 8 caracteres.');
+                    }
+                    $user->password = bcrypt($password);
+                }
+                
+                if ($this->imagen_empleado) {
+                    $this->validate(['imagen_empleado' => 'image|max:2048']);
+                    $imagenPath = $this->imagen_empleado->store('empleados', 'public');
+                    $user->imagen_url = $imagenPath;
+                }
     
-    public function actualizarProducto($id, $nombre, $precio, $iva_id, $categoria_id, $stock, $se_vende, $imagen_url = null, $nueva_imagen = null)
+                $user->save();
+                session()->flash('message', 'Empleado actualizado correctamente');
+            } else {
+                session()->flash('error', 'Empleado no encontrado.');
+            }
+    
+            $this->user = User::select('id', 'name', 'email', 'password', 'privilegios', 'imagen_url', 'puesto_empresa')->get()->keyBy('id')->toArray();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $errors = $e->validator->errors()->getMessages();
+            foreach ($errors as $field => $message) {
+                session()->flash('error_' . $field, $this->getCustomErrorMessage($field, $message));
+            }
+        } catch (\Illuminate\Database\QueryException $e) {
+            session()->flash('error', 'Hubo un problema al actualizar el empleado. Por favor, inténtelo de nuevo más tarde.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Ocurrió un error inesperado. Por favor, inténtelo de nuevo más tarde.');
+        }
+
+    }
+
+    public function actualizarProducto($id, $nombre, $precio, $iva_id, $categoria_id, $stock, $se_vende, $imagen_url = null)
     {
         try {
             $producto = Producto::find($id);
@@ -401,7 +556,11 @@ public function actualizarEmpleado($id, $name, $email, $password, $privilegios, 
                 session()->flash('error', 'Empleado no encontrado.');
             }
     
-            $this->user = User::select('id', 'name', 'email', 'password', 'privilegios', 'imagen_url', 'puesto_empresa')->get()->keyBy('id')->toArray();
+            // Actualizar la lista de usuarios después de eliminar el empleado
+            $this->user = User::select('id', 'name', 'email', 'password', 'privilegios', 'imagen_url', 'puesto_empresa')
+                ->get()
+                ->keyBy('id')
+                ->toArray();
         } catch (\Illuminate\Database\QueryException $e) {
             session()->flash('error', 'Hubo un problema al eliminar el empleado. Por favor, inténtelo de nuevo más tarde.');
         } catch (\Exception $e) {
@@ -409,30 +568,57 @@ public function actualizarEmpleado($id, $name, $email, $password, $privilegios, 
         }
     }
     
+    public function dropEmpresa($id)
+    {
+        try {
+            $empresa = Empresa::find($id);
+            if ($empresa) {
+                $empresa->delete();
+                session()->flash('message', 'Empresa eliminada correctamente');
+            } else {
+                session()->flash('error', 'Empresa no encontrada.');
+            }
 
-public function dropProducto($id)
-{
-    try {
-        $producto = Producto::find($id);
-        if ($producto) {
-            $producto->delete();
-            session()->push('messages.success', 'Producto eliminado correctamente');
-        } else {
-            session()->push('messages.error', 'Producto no encontrado.');
+            // Actualizar la lista de empresas después de la eliminación
+            $this->empresa = Empresa::select('id', 'nombre', 'direccion', 'telefono', 'email', 'ruc', 'tipo_empresa', 'actividad_economica', 'ciudad', 'codigo_postal', 'nif')
+                ->get()
+                ->keyBy('id')
+                ->toArray();
+        } catch (\Illuminate\Database\QueryException $e) {
+            session()->flash('error', 'Hubo un problema al eliminar la empresa. Por favor, inténtelo de nuevo más tarde.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Ocurrió un error inesperado. Por favor, inténtelo de nuevo más tarde.');
         }
-
-        // Actualizar la lista de productos después de la eliminación
-        $this->productos = Producto::select('id', 'nombre', 'precio', 'imagen_url', 'iva_id', 'categoria_id', 'stock', 'se_vende')
-            ->with('categoria')
-            ->get()
-            ->keyBy('id')
-            ->toArray();
-    } catch (\Illuminate\Database\QueryException $e) {
-        session()->push('messages.error', 'Hubo un problema al eliminar el producto. Por favor, inténtelo de nuevo más tarde.');
-    } catch (\Exception $e) {
-        session()->push('messages.error', 'Ocurrió un error inesperado. Por favor, inténtelo de nuevo más tarde.');
     }
-}
+    
+    public function dropProducto($id)
+    {
+        try {
+            $producto = Producto::find($id);
+            if ($producto) {
+                $producto->delete();
+                session()->flash('message', 'Producto eliminado correctamente');
+                session()->flash('message_type', 'success');
+            } else {
+                session()->flash('message', 'Producto no encontrado.');
+                session()->flash('message_type', 'error');
+            }
+    
+            // Actualizar la lista de productos después de la eliminación
+            $this->productos = Producto::select('id', 'nombre', 'precio', 'imagen_url', 'iva_id', 'categoria_id', 'stock', 'se_vende')
+                ->with('categoria')
+                ->get()
+                ->keyBy('id')
+                ->toArray();
+        } catch (\Illuminate\Database\QueryException $e) {
+            session()->flash('message', 'Hubo un problema al eliminar el producto. Por favor, inténtelo de nuevo más tarde.');
+            session()->flash('message_type', 'error');
+        } catch (\Exception $e) {
+            session()->flash('message', 'Ocurrió un error inesperado. Por favor, inténtelo de nuevo más tarde.');
+            session()->flash('message_type', 'error');
+        }
+    }
+    
 
     
 public function dropCategoria($id)
